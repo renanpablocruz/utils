@@ -1,6 +1,8 @@
 import random
 import uuid
 import argparse
+import json
+from kafka import KafkaProducer
 
 # adid                | uuid                        |           | not null |
 # app_id              | text                        |           | not null |
@@ -41,10 +43,8 @@ def _click_gen():
   }
 
 def clicks_generator(n):
-  r = []
   for i in range(n):
-    r.append(_click_gen())
-  return r
+    yield _click_gen()
 
 def _impression_gen(): # same as click!!!
   adid = uuid.uuid4()
@@ -67,10 +67,8 @@ def _impression_gen(): # same as click!!!
   }
 
 def impressions_generator(n):
-  r = []
   for i in range(n):
-    r.append(_impression_gen())
-  return r
+    yield _impression_gen()
 
 def _install_gen():
   adid = uuid.uuid4()
@@ -88,24 +86,26 @@ def _install_gen():
   }
 
 def installs_generator(n):
-  r = []
   for i in range(n):
-    r.append(_install_gen())
-  return r
+    yield _install_gen()
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('-t')
+  parser.add_argument('-e')
   parser.add_argument('-n')
   args = parser.parse_args()
-
-  method = args.t
+  topic = args.t
+  method = args.e
   n = int(args.n)
+
   if method == 'installs':
     r = installs_generator(n)
   elif method == 'clicks':
     r = clicks_generator(n)
   elif method == 'impressions':
     r = impressions_generator(n)
-
-  print r
+  
+  producer = KafkaProducer(value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+  for message in r:
+    producer.send(topic, message)
